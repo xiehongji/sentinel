@@ -26,11 +26,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @author Carpenter Lee
  */
 @SpringBootApplication
-public class DashboardApplication {
+public class DashboardNacosApplication {
 
     public static void main(String[] args) {
         triggerSentinelInit();
-        SpringApplication.run(DashboardApplication.class, args);
+        SpringApplication.run(DashboardNacosApplication.class, args);
     }
 
     private static void triggerSentinelInit() {
