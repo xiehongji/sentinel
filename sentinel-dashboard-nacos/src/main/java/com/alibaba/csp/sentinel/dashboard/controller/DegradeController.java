@@ -48,7 +48,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Controller regarding APIs of degrade rules. Refactored since 1.8.0.
- *
+ *降级规则
  * @author Carpenter Lee
  * @author Eric Zhao
  */

@@ -48,7 +48,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Flow rule controller.
- *
+ *流控规则
  * @author leyou
  * @author Eric Zhao
  */
@@ -97,7 +97,9 @@ public class FlowControllerV1 {
                     }
                 }
             }
+
             rules = repository.saveAll(rules);
+            sentinelApiClient.setFlowRuleOfMachineAsync(app, ip, port, rules);
             return Result.ofSuccess(rules);
         } catch (Throwable throwable) {
             logger.error("Error when querying flow rules", throwable);
@@ -295,12 +297,14 @@ public class FlowControllerV1 {
     private void publishRules(/*@NonNull*/ String app) throws Exception {
         List<FlowRuleEntity> rules = repository.findAllByApp(app);
         rulePublisher.publish(app, rules);
+
     }
 
     private boolean publishRules(String app, String ip, Integer port) {
         List<FlowRuleEntity> rules = repository.findAllByMachine(MachineInfo.of(app, ip, port));
         try {
             rulePublisher.publish(app,rules);
+            sentinelApiClient.setFlowRuleOfMachineAsync(app, ip, port, rules);
             return true;
         } catch (Exception e) {
             e.printStackTrace();
