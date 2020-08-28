@@ -18,11 +18,7 @@ package com.alibaba.csp.sentinel.dashboard.metric;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.nio.charset.Charset;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -38,10 +34,14 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.alibaba.csp.sentinel.Constants;
 import com.alibaba.csp.sentinel.concurrent.NamedThreadFactory;
 import com.alibaba.csp.sentinel.config.SentinelConfig;
+import com.alibaba.csp.sentinel.dashboard.client.SentinelApiClient;
 import com.alibaba.csp.sentinel.dashboard.datasource.entity.MetricEntity;
+import com.alibaba.csp.sentinel.dashboard.datasource.entity.rule.*;
 import com.alibaba.csp.sentinel.dashboard.discovery.AppInfo;
 import com.alibaba.csp.sentinel.dashboard.discovery.AppManagement;
 import com.alibaba.csp.sentinel.dashboard.discovery.MachineInfo;
+import com.alibaba.csp.sentinel.dashboard.domain.vo.Matchine;
+import com.alibaba.csp.sentinel.dashboard.rule.DynamicRuleProvider;
 import com.alibaba.csp.sentinel.node.metric.MetricNode;
 import com.alibaba.csp.sentinel.util.StringUtil;
 
@@ -59,6 +59,7 @@ import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 /**
@@ -79,20 +80,39 @@ public class MetricFetcher {
     private final long intervalSecond = 1;
 
     private Map<String, AtomicLong> appLastFetchTime = new ConcurrentHashMap<>();
-
     @Autowired
     private MetricsRepository<MetricEntity> metricStore;
     @Autowired
     private AppManagement appManagement;
 
     private CloseableHttpAsyncClient httpclient;
+    @Autowired
+    private SentinelApiClient sentinelApiClient;
+    @Autowired
+    @Qualifier("systemRuleNacosProvider")
+    private DynamicRuleProvider<List<SystemRuleEntity>> ruleProviderSystem;
+    @Autowired
+    @Qualifier("flowRuleNacosProvider")
+    private DynamicRuleProvider<List<FlowRuleEntity>> ruleProviderFlow;
+
+    @Autowired
+    @Qualifier("degradeRuleNacosProvider")
+    private DynamicRuleProvider<List<DegradeRuleEntity>> ruleProviderDegrade;
+
+    @Autowired
+    @Qualifier("paramFlowFlowRuleNacosProvider")
+    private DynamicRuleProvider<List<ParamFlowRuleEntity>> ruleProviderParam;
+
+    @Autowired
+    @Qualifier("authorityRuleNacosProvider")
+    private DynamicRuleProvider<List<AuthorityRuleEntity>> ruleProviderAuthority;
 
     @SuppressWarnings("PMD.ThreadPoolCreationRule")
     private ScheduledExecutorService fetchScheduleService = Executors.newScheduledThreadPool(1,
         new NamedThreadFactory("sentinel-dashboard-metrics-fetch-task"));
     private ExecutorService fetchService;
     private ExecutorService fetchWorker;
-
+    private List<Matchine>  list=new ArrayList<>();
     public MetricFetcher() {
         int cores = Runtime.getRuntime().availableProcessors() * 2;
         long keepAliveTime = 0;
@@ -202,10 +222,60 @@ public class MetricFetcher {
                 logger.info("Dead machine removed: {}:{} of {}", machine.getIp(), machine.getPort(), app);
                 continue;
             }
-            if (!machine.isHealthy()) {
+            boolean res=machine.isHealthy();
+            list=manageData(list,machine);
+            if (!res) {
+                //表示应用不健康
+                for(int i=0;i<list.size();i++){
+                    if(Objects.equals(machine.getApp(),list.get(i).getApp())){
+                            list.get(i).setWebBoolean(true);
+                    }
+                }
                 latch.countDown();
                 unhealthy.incrementAndGet();
                 continue;
+            }else{
+                //表示应用健康
+                for(int i=0;i<list.size();i++){
+                    if(Objects.equals(machine.getApp(),list.get(i).getApp())){
+                        if(list.get(i).getWebBoolean()){
+                            System.out.println("我要加载规则到内存了="+machine.getApp());
+                            try {
+                                //流控
+                                List<FlowRuleEntity> rules = ruleProviderFlow.getRules(app);
+                                if (rules != null && !rules.isEmpty()) {
+                                    for (FlowRuleEntity entity : rules) {
+                                        entity.setApp(app);
+                                        if (entity.getClusterConfig() != null && entity.getClusterConfig().getFlowId() != null) {
+                                            entity.setId(entity.getClusterConfig().getFlowId());
+                                        }
+                                    }
+                                }
+                                sentinelApiClient.setFlowRuleOfMachineAsync(machine.getApp(), machine.getIp(), machine.getPort(), rules);
+                                //降级
+                                List<DegradeRuleEntity> rulesDegrade = ruleProviderDegrade.getRules(app);
+                                if (rules != null && !rules.isEmpty()) {
+                                    for (DegradeRuleEntity entity : rulesDegrade) {
+                                        entity.setApp(app);
+                                    }
+                                }
+                                sentinelApiClient.setDegradeRuleOfMachine(machine.getApp(), machine.getIp(), machine.getPort(), rulesDegrade);
+                                //热点
+                                List<ParamFlowRuleEntity> rulesParam = ruleProviderParam.getRules(app);
+                                sentinelApiClient.setParamFlowRuleOfMachine(machine.getApp(), machine.getIp(), machine.getPort(), rulesParam);
+                                //系统
+                                List<SystemRuleEntity> rulesSystem = ruleProviderSystem.getRules(app);
+                                sentinelApiClient.setSystemRuleOfMachine(machine.getApp(), machine.getIp(), machine.getPort(), rulesSystem);
+                                //授权
+                                List<AuthorityRuleEntity> rulesAuthority = ruleProviderAuthority.getRules(app);
+                                sentinelApiClient.setAuthorityRuleOfMachine(machine.getApp(), machine.getIp(), machine.getPort(), rulesAuthority);
+                            }catch (Exception e){
+                                e.printStackTrace();
+                            }
+                            list.get(i).setWebBoolean(false);
+                        }
+                    }
+                }
             }
             final String url = "http://" + machine.getIp() + ":" + machine.getPort() + "/" + METRIC_URL_PATH
                 + "?startTime=" + startTime + "&endTime=" + endTime + "&refetch=" + false;
@@ -258,6 +328,17 @@ public class MetricFetcher {
         writeMetric(metricMap);
     }
 
+    private List<Matchine> manageData(List <Matchine> list,MachineInfo machineInfo){
+          for(int i=0;i<list.size();i++){
+              if(Objects.equals(machineInfo.getApp(),list.get(i).getApp())){
+                  return list;
+              }
+          }
+          Matchine matchine=new Matchine();
+          matchine.setApp(machineInfo.getApp());
+          list.add(matchine);
+          return list;
+    }
     private void doFetchAppMetric(final String app) {
         long now = System.currentTimeMillis();
         long lastFetchMs = now - MAX_LAST_FETCH_INTERVAL_MS;

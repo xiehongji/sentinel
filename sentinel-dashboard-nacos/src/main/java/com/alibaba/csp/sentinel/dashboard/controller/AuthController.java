@@ -18,17 +18,22 @@ package com.alibaba.csp.sentinel.dashboard.controller;
 import com.alibaba.csp.sentinel.dashboard.auth.AuthService;
 import com.alibaba.csp.sentinel.dashboard.auth.SimpleWebAuthServiceImpl;
 import com.alibaba.csp.sentinel.dashboard.config.DashboardConfig;
+import com.alibaba.csp.sentinel.dashboard.datasource.entity.rule.AuthorityRuleEntity;
 import com.alibaba.csp.sentinel.dashboard.domain.Result;
+import com.alibaba.csp.sentinel.dashboard.rule.DynamicRuleProvider;
+import com.alibaba.csp.sentinel.dashboard.rule.DynamicRulePublisher;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 /**
  * @author cdfive
@@ -48,6 +53,8 @@ public class AuthController {
 
     @Autowired
     private AuthService<HttpServletRequest> authService;
+
+
 
     @PostMapping("/login")
     public Result<AuthService.AuthUser> login(HttpServletRequest request, String username, String password) {

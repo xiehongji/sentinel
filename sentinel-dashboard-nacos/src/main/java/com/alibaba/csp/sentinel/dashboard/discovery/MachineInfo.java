@@ -30,6 +30,9 @@ public class MachineInfo implements Comparable<MachineInfo> {
     private long lastHeartbeat;
     private long heartbeatVersion;
 
+
+
+
     /**
      * Indicates the version of Sentinel client (since 0.2.0).
      */
@@ -106,7 +109,8 @@ public class MachineInfo implements Comparable<MachineInfo> {
     
     public boolean isHealthy() {
         long delta = System.currentTimeMillis() - lastHeartbeat;
-        return delta < DashboardConfig.getUnhealthyMachineMillis();
+        boolean res=delta < DashboardConfig.getUnhealthyMachineMillis();
+        return res;
     }
     
     /**
