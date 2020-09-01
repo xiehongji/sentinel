@@ -13,7 +13,7 @@ public abstract class RuleNacosPublisher<T extends RuleEntity> implements Dynami
 
     @Autowired
     protected ConfigService configService;
-    @Autowired
+    @Autowired(required = false)
     protected Converter<List<T>, String> converter;
 
     @Override

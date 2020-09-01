@@ -27,7 +27,7 @@
         <dependency>
             <groupId>com.alibaba.csp</groupId>
             <artifactId>sentinel-web-servlet</artifactId>
-            <version>${project.version}</version>
+            <version>1.8.0</version>
         </dependency>
         <dependency>
             <groupId>com.alibaba.csp</groupId>
@@ -36,12 +36,11 @@
         <dependency>
             <groupId>com.alibaba.csp</groupId>
             <artifactId>sentinel-parameter-flow-control</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.alibaba.csp</groupId>
             <artifactId>sentinel-api-gateway-adapter-common</artifactId>
-            <version>${project.version}</version>
+            <version>1.8.0</version>
         </dependency>
 
         <dependency>

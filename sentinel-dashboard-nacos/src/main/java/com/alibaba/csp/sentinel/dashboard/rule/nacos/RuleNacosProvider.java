@@ -13,7 +13,7 @@ import java.util.List;
 public abstract class RuleNacosProvider <T extends RuleEntity>  implements DynamicRuleProvider<List<T>> {
     @Autowired
     protected ConfigService configService;
-    @Autowired
+    @Autowired(required = false)
     protected Converter<String, List<T>> converter;
 
     @Override
