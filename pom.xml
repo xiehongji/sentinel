@@ -74,8 +74,9 @@
         <module>sentinel-adapter</module>
         <module>sentinel-cluster</module>
         <module>sentinel-logging</module>
-
         <module>sentinel-dashboard</module>
+        <module>sentinel-dashboard-alone</module>
+        <module>sentinel-dashboard-zookeeper</module>
         <module>sentinel-dashboard-nacos</module>
         <module>sentinel-demo</module>
         <module>sentinel-benchmark</module>
