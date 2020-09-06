@@ -75,8 +75,12 @@
         <module>sentinel-cluster</module>
         <module>sentinel-logging</module>
         <module>sentinel-dashboard</module>
+        <!--监控数据持久化-->
+        <module>sentinel-mysql</module>
         <module>sentinel-dashboard-alone</module>
+        <!--规则持久化到zookeeper-->
         <module>sentinel-dashboard-zookeeper</module>
+        <!--规则持久化到nacos-->
         <module>sentinel-dashboard-nacos</module>
         <module>sentinel-demo</module>
         <module>sentinel-benchmark</module>
