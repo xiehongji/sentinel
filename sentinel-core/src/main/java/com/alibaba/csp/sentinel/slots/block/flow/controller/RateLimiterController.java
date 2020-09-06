@@ -15,14 +15,14 @@
  */
 package com.alibaba.csp.sentinel.slots.block.flow.controller;
 
+import com.alibaba.csp.sentinel.node.Node;
+import com.alibaba.csp.sentinel.slots.block.flow.TrafficShapingController;
+import com.alibaba.csp.sentinel.util.TimeUtil;
+
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.alibaba.csp.sentinel.slots.block.flow.TrafficShapingController;
-
-import com.alibaba.csp.sentinel.util.TimeUtil;
-import com.alibaba.csp.sentinel.node.Node;
-
 /**
+ * 排队等待的控制层
  * @author jialiang.linjl
  */
 public class RateLimiterController implements TrafficShapingController {
@@ -55,10 +55,10 @@ public class RateLimiterController implements TrafficShapingController {
         }
 
         long currentTime = TimeUtil.currentTimeMillis();
-        // Calculate the interval between every two requests.
+        // 计算每两个请求之间的间隔。
         long costTime = Math.round(1.0 * (acquireCount) / count * 1000);
 
-        // Expected pass time of this request.
+        // 此请求的预期传递时间。
         long expectedTime = costTime + latestPassedTime.get();
 
         if (expectedTime <= currentTime) {
@@ -66,7 +66,7 @@ public class RateLimiterController implements TrafficShapingController {
             latestPassedTime.set(currentTime);
             return true;
         } else {
-            // Calculate the time to wait.
+            //计算等待的时间。
             long waitTime = costTime + latestPassedTime.get() - TimeUtil.currentTimeMillis();
             if (waitTime > maxQueueingTimeMs) {
                 return false;
@@ -81,6 +81,7 @@ public class RateLimiterController implements TrafficShapingController {
                     // in race condition waitTime may <= 0
                     if (waitTime > 0) {
                         Thread.sleep(waitTime);
+                        System.out.println("waitTime="+waitTime);
                     }
                     return true;
                 } catch (InterruptedException e) {
